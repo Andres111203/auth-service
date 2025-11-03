@@ -1,4 +1,4 @@
-# Software_development_III_project
+# Software_development_III_project_auth_service
 Software development III final project
 
 - Náthalie Wilches Tamayo - 2569482  
