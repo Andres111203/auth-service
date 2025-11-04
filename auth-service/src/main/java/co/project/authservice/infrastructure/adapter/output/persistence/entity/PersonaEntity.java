@@ -36,7 +36,9 @@ public class PersonaEntity {
 
     @Column(nullable = false, unique = true, length = 100)
     private String per_email;
-    //private String per_telefono; agregar column en bd
+
+    @Column(nullable = true, length = 30)
+    private String per_telefono;
 
     @OneToOne
     @JoinColumn(name = "per_tipo_documento", referencedColumnName = "tipodoc_id", nullable = false)
