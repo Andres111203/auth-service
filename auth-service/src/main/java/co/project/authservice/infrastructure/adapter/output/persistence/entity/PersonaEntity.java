@@ -37,9 +37,6 @@ public class PersonaEntity {
     @Column(nullable = false, unique = true, length = 100)
     private String per_email;
 
-    @Column(nullable = true, length = 30)
-    private String per_telefono;
-
     @OneToOne
     @JoinColumn(name = "per_tipo_documento", referencedColumnName = "tipodoc_id", nullable = false)
     private TipoDocumentoEntity per_tipo_documento;
@@ -47,8 +44,11 @@ public class PersonaEntity {
     @Column(nullable = false, length = 20)
     private String per_numero_documento;
 
-
+    @Column
     private LocalDate per_fecha_nacimiento;
+
+    @Column(nullable = true, length = 30)
+    private String per_telefono;
 
     @Column(nullable = false)
     private boolean per_registro_vigente;
