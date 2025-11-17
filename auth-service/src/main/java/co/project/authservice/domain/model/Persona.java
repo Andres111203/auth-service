@@ -5,6 +5,12 @@ import lombok.Setter;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+import java.time.Period;
+import java.time.LocalDateTime;
+import java.time.Period;
+
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,4 +27,14 @@ public class Persona {
     private String email;
     private String fechaNacimiento;
     private boolean registroVigente;
+
+    public Boolean validateAge(LocalDateTime fechaNacimiento){
+
+        if(fechaNacimiento.isAfter(LocalDateTime.now())){
+            throw new IllegalArgumentException("Fecha inválida. Por favor valide la fecha de nacimiento");
+        }
+        int edad = Period.between(fechaNacimiento.toLocalDate(),
+                LocalDateTime.now().toLocalDate()).getYears();
+        return edad >= 16;
+    }
 }

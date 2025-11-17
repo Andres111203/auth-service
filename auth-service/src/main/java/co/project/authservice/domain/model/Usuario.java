@@ -25,4 +25,9 @@ public class Usuario {
     private LocalDateTime fechaModifPassword;
     private LocalDateTime fechaRegistro;
 
+    public boolean isExpired(){
+        if(fechaVencimiento == null) return false;
+        return fechaVencimiento.isBefore(LocalDateTime.now());
+    }
+
 }
