@@ -49,15 +49,13 @@ public class AuthService {
     public AuthResponse register(RegisterRequest request) {
         log.info("Iniciando registro para usuario: {}", request.getEmail());
 
-        // Validar que las contraseñas coincidan
+
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new InvalidRequestException("Las contraseñas no coinciden");
         }
 
-        // Validar edad mínima
         validateMinimumAge(request.getFechaNacimiento());
 
-        // Validar que no exista el usuario
         if (usuarioRepository.existsByLogin(request.getLogin())) {
             throw new ResourceAlreadyExistsException("El login ya está registrado");
         }
@@ -74,13 +72,11 @@ public class AuthService {
             throw new ResourceAlreadyExistsException("El número de documento ya está registrado");
         }
 
-        // Buscar tipo de documento
         TipoDocumento tipoDocumento = tipoDocumentoRepository
                 .findByIdAndRegistroVigenteTrue(request.getTipoDocumento())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Tipo de documento no encontrado: " + request.getTipoDocumento()));
 
-        // Crear persona
         Persona persona = Persona.builder()
                 .primerNombre(request.getPrimerNombre())
                 .segundoNombre(request.getSegundoNombre())
@@ -96,7 +92,7 @@ public class AuthService {
 
         persona = personaRepository.save(persona);
 
-        // Crear usuario
+
         ZonedDateTime now = ZonedDateTime.now();
         Usuario usuario = Usuario.builder()
                 .persona(persona)
@@ -113,10 +109,10 @@ public class AuthService {
 
         usuario = usuarioRepository.save(usuario);
 
-        // Asignar perfil por defecto "USER"
+
         assignDefaultProfile(usuario);
 
-        // Autenticar y generar tokens
+
         return authenticateAndGenerateTokens(request.getLogin(), request.getPassword());
     }
 
@@ -127,19 +123,19 @@ public class AuthService {
         Usuario usuario = usuarioRepository.findByLoginOrEmail(request.getIdentifier())
                 .orElseThrow(() -> new InvalidCredentialsException("Credenciales inválidas"));
 
-        // Validar que el usuario esté vigente
+
         if (!usuario.getRegistroVigente()) {
             throw new AccountDisabledException("La cuenta está deshabilitada");
         }
 
-        // Validar que sea un usuario tradicional (no OAuth)
+
         if (usuario.getOauthProvider() != null) {
             throw new InvalidCredentialsException(
                     "Esta cuenta usa autenticación OAuth2. Por favor inicie sesión con " +
                             usuario.getOauthProvider());
         }
 
-        // Validar vigencia de contraseña
+
         if (usuario.getFechaVencimiento() != null &&
                 usuario.getFechaVencimiento().isBefore(ZonedDateTime.now())) {
             throw new PasswordExpiredException("La contraseña ha expirado. Por favor actualícela.");

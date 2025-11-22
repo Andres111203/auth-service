@@ -16,9 +16,7 @@ public class UserController {
 
     private final UserService userService;
 
-    /**
-     * Obtener información del usuario autenticado
-     */
+
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UsuarioResponse> getCurrentUser(Authentication authentication) {
@@ -27,9 +25,7 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Obtener usuario por ID (solo para administradores)
-     */
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UsuarioResponse> getUserById(@PathVariable Long id) {
