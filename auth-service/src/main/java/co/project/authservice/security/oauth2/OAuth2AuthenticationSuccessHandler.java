@@ -1,7 +1,10 @@
 package co.project.authservice.security.oauth2;
 
+import co.project.authservice.entity.Perfil;
+import co.project.authservice.entity.PerfilPorUsuario;
 import co.project.authservice.entity.Usuario;
 import co.project.authservice.repository.PerfilPorUsuarioRepository;
+import co.project.authservice.repository.PerfilRepository;
 import co.project.authservice.repository.UsuarioRepository;
 import co.project.authservice.security.jwt.JwtTokenProvider;
 import co.project.authservice.security.jwt.UserDetailsImpl;
@@ -16,7 +19,9 @@ import org.springframework.security.oauth2.client.authentication.OAuth2Authentic
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
+
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -31,11 +36,13 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private final JwtTokenProvider tokenProvider;
     private final UsuarioRepository usuarioRepository;
     private final PerfilPorUsuarioRepository perfilPorUsuarioRepository;
+    private final PerfilRepository perfilRepository;
 
     @Value("${cors.allowed-origins}")
-    private String[] allowedOrigins;
+    private String allowedOrigins;
 
     @Override
+    @Transactional
     public void onAuthenticationSuccess(
             HttpServletRequest request,
             HttpServletResponse response,
@@ -50,6 +57,8 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         String provider = oauthToken.getAuthorizedClientRegistrationId();
 
         try {
+            log.info("OAuth2 authentication successful for provider: {}", provider);
+
             Usuario usuario = processOAuth2User(provider, oAuth2User);
 
             List<String> perfiles = perfilPorUsuarioRepository
@@ -57,6 +66,11 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                     .stream()
                     .map(ppu -> ppu.getPerfil().getNombre())
                     .collect(Collectors.toList());
+
+            if (perfiles.isEmpty()) {
+                assignDefaultProfile(usuario);
+                perfiles = List.of("USER");
+            }
 
             UserDetailsImpl userDetails = UserDetailsImpl.build(usuario, perfiles);
 
@@ -67,7 +81,12 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             String token = tokenProvider.generateToken(auth, usuario.getId());
             String refreshToken = tokenProvider.generateRefreshToken(usuario.getEmail());
 
-            String targetUrl = determineTargetUrl(token, refreshToken);
+            log.info("Tokens generated successfully for user: {}", usuario.getEmail());
+
+            String frontendUrl = allowedOrigins.split(",")[0].trim();
+            String targetUrl = determineTargetUrl(frontendUrl, token, refreshToken);
+
+            log.info("Redirecting to: {}", targetUrl);
 
             if (response.isCommitted()) {
                 log.debug("Response has already been committed. Unable to redirect to " + targetUrl);
@@ -78,16 +97,21 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
         } catch (Exception ex) {
             log.error("Error during OAuth2 authentication", ex);
-            getRedirectStrategy().sendRedirect(
-                    request,
-                    response,
-                    allowedOrigins[0] + "/login?error=oauth2_error"
-            );
+
+            String frontendUrl = allowedOrigins.split(",")[0].trim();
+            String errorUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/login.html")
+                    .queryParam("error", "oauth2_error")
+                    .queryParam("message", ex.getMessage())
+                    .build()
+                    .toUriString();
+
+            getRedirectStrategy().sendRedirect(request, response, errorUrl);
         }
     }
 
     private Usuario processOAuth2User(String provider, OAuth2User oAuth2User) {
         Map<String, Object> attributes = oAuth2User.getAttributes();
+
         String providerId = attributes.get("sub") != null
                 ? attributes.get("sub").toString()
                 : attributes.get("id").toString();
@@ -96,21 +120,26 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                 ? attributes.get("email").toString()
                 : null;
 
-        String name = attributes.get("name") != null
-                ? attributes.get("name").toString()
-                : email;
+        if (email == null) {
+            throw new IllegalArgumentException("Email no proporcionado por el proveedor OAuth2");
+        }
 
         String pictureUrl = attributes.get("picture") != null
                 ? attributes.get("picture").toString()
                 : null;
 
+        log.info("Processing OAuth2 user - Provider: {}, Email: {}", provider, email);
+
         return usuarioRepository
                 .findByOauthProviderAndOauthProviderIdAndRegistroVigenteTrue(provider, providerId)
                 .map(existingUser -> {
+                    log.info("Usuario OAuth2 existente encontrado: {}", existingUser.getEmail());
                     existingUser.setProfilePictureUrl(pictureUrl);
                     return usuarioRepository.save(existingUser);
                 })
                 .orElseGet(() -> {
+                    log.info("Creando nuevo usuario OAuth2: {}", email);
+
                     Usuario newUser = Usuario.builder()
                             .email(email)
                             .oauthProvider(provider)
@@ -125,8 +154,31 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                 });
     }
 
-    private String determineTargetUrl(String token, String refreshToken) {
-        return UriComponentsBuilder.fromUriString(allowedOrigins[0] + "/oauth2/redirect")
+    private void assignDefaultProfile(Usuario usuario) {
+        log.info("Asignando perfil por defecto al usuario: {}", usuario.getEmail());
+
+        Perfil perfilUser = perfilRepository.findByNombreAndRegistroVigenteTrue("USER")
+                .orElseGet(() -> {
+                    log.info("Creando perfil USER por defecto");
+                    Perfil newPerfil = Perfil.builder()
+                            .nombre("USER")
+                            .registroVigente(true)
+                            .build();
+                    return perfilRepository.save(newPerfil);
+                });
+
+        PerfilPorUsuario perfilPorUsuario = PerfilPorUsuario.builder()
+                .usuario(usuario)
+                .perfil(perfilUser)
+                .registroVigente(true)
+                .build();
+
+        perfilPorUsuarioRepository.save(perfilPorUsuario);
+        log.info("Perfil USER asignado exitosamente");
+    }
+
+    private String determineTargetUrl(String frontendUrl, String token, String refreshToken) {
+        return UriComponentsBuilder.fromUriString(frontendUrl + "/oauth2/redirect.html")
                 .queryParam("token", token)
                 .queryParam("refreshToken", refreshToken)
                 .build()

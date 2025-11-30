@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+
 
 @RestController
 @RequestMapping("/auth")
@@ -23,6 +25,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         log.info("POST /auth/register - Email: {}", request.getEmail());
+        System.out.println(request);
         AuthResponse response = authService.register(request);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
@@ -46,6 +49,16 @@ public class AuthController {
         AuthResponse response = authService.refreshToken(refreshToken);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/select-profile")
+    public ResponseEntity<AuthResponse> seleccionarPerfil(
+            @RequestParam String perfil,
+            Authentication authentication) {
+
+        AuthResponse response = authService.changeProfile(authentication, perfil);
+        return ResponseEntity.ok(response);
+    }
+
 
     @GetMapping("/health")
     public ResponseEntity<String> health() {

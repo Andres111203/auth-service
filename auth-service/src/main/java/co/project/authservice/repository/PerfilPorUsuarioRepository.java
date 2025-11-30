@@ -18,4 +18,7 @@ public interface PerfilPorUsuarioRepository extends JpaRepository<PerfilPorUsuar
     List<PerfilPorUsuario> findActiveProfilesByUsuarioId(@Param("usuarioId") Long usuarioId);
 
     boolean existsByUsuarioIdAndPerfilIdAndRegistroVigenteTrue(Long usuarioId, Long perfilId);
+
+    boolean existsByUsuarioIdAndPerfilNombreAndRegistroVigenteTrue(Long id, String nombre);
+
 }

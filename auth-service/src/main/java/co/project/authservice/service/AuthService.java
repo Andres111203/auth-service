@@ -281,4 +281,33 @@ public class AuthService {
 
         return fullName.toString();
     }
+
+    @Transactional
+    public AuthResponse changeProfile(Authentication authentication, String perfilNombre) {
+
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        Usuario usuario = usuarioRepository.findById(userDetails.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+
+        boolean permitido = perfilPorUsuarioRepository
+                .existsByUsuarioIdAndPerfilNombreAndRegistroVigenteTrue(
+                        usuario.getId(), perfilNombre);
+
+        if (!permitido) {
+            throw new InvalidRequestException("El perfil no pertenece al usuario");
+        }
+
+
+        Authentication newAuth =
+                new UsernamePasswordAuthenticationToken(
+                        userDetails, null,
+                        List.of(() -> "ROLE_" + perfilNombre)
+                );
+
+        String token = tokenProvider.generateToken(newAuth, usuario.getId());
+        String refreshToken = tokenProvider.generateRefreshToken(usuario.getEmail());
+
+        return buildAuthResponse(usuario, token, refreshToken, List.of(perfilNombre));
+    }
+
 }
