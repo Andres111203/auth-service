@@ -38,7 +38,12 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private final PerfilPorUsuarioRepository perfilPorUsuarioRepository;
     private final PerfilRepository perfilRepository;
 
-    @Value("${cors.allowed-origins}")
+    // Usar la propiedad específica de OAuth redirect URIs
+    @Value("${app.oauth2.authorized-redirect-uri}")
+    private String authorizedRedirectUris;
+
+    // opcional si sigues necesitando allowedOrigins para otra cosa
+    @Value("${cors.allowed-origins:}")
     private String allowedOrigins;
 
     @Override
@@ -83,8 +88,9 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
             log.info("Tokens generated successfully for user: {}", usuario.getEmail());
 
-            String frontendUrl = allowedOrigins.split(",")[0].trim();
-            String targetUrl = determineTargetUrl(frontendUrl, token, refreshToken);
+            // Toma la primera URI autorizada configurada en app.oauth2.authorized-redirect-uri
+            String redirectUri = authorizedRedirectUris.split(",")[0].trim();
+            String targetUrl = determineRedirectUrl(redirectUri, token, refreshToken);
 
             log.info("Redirecting to: {}", targetUrl);
 
@@ -98,8 +104,8 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         } catch (Exception ex) {
             log.error("Error during OAuth2 authentication", ex);
 
-            String frontendUrl = allowedOrigins.split(",")[0].trim();
-            String errorUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/login.html")
+            String redirectUri = authorizedRedirectUris.split(",")[0].trim();
+            String errorUrl = UriComponentsBuilder.fromUriString(redirectUri.replace("/oauth2/redirect.html","/login.html"))
                     .queryParam("error", "oauth2_error")
                     .queryParam("message", ex.getMessage())
                     .build()
@@ -177,8 +183,8 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         log.info("Perfil USER asignado exitosamente");
     }
 
-    private String determineTargetUrl(String frontendUrl, String token, String refreshToken) {
-        return UriComponentsBuilder.fromUriString(frontendUrl + "/oauth2/redirect.html")
+    private String determineRedirectUrl(String redirectUri, String token, String refreshToken) {
+        return UriComponentsBuilder.fromUriString(redirectUri)
                 .queryParam("token", token)
                 .queryParam("refreshToken", refreshToken)
                 .build()

@@ -39,7 +39,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/auth/register",
@@ -49,7 +49,7 @@ public class SecurityConfig {
                                 "/oauth2/**",
                                 "/login/oauth2/**"
                         ).permitAll()
-                        .requestMatchers("/user/me").authenticated()  // ← AGREGAR ESTA LÍNEA
+                        .requestMatchers("/user/me").authenticated()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
