@@ -115,4 +115,9 @@ public class UserService {
         }
         return usuario.getFechaVencimiento().isBefore(ZonedDateTime.now());
     }
+
+    public boolean existsById(Long id) {
+        return usuarioRepository.existsById(id);
+    }
+
 }
