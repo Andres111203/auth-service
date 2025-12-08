@@ -4,6 +4,7 @@ import co.project.authservice.dto.request.LoginRequest;
 import co.project.authservice.dto.request.RegisterRequest;
 import co.project.authservice.dto.response.AuthResponse;
 import co.project.authservice.service.AuthService;
+import co.project.authservice.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ import org.springframework.security.core.Authentication;
 public class AuthController {
 
     private final AuthService authService;
+    private final UserService userService;
 
 
     @PostMapping("/register")
@@ -64,5 +66,19 @@ public class AuthController {
     public ResponseEntity<String> health() {
         return ResponseEntity.ok("Auth service is running");
     }
+
+    @GetMapping("/exists/{id}")
+    public ResponseEntity<?> existsById(@PathVariable Long id) {
+        log.info("GET /users/exists/{} - Checking user existence", id);
+
+        boolean exists = userService.existsById(id);
+
+        if (exists) {
+            return ResponseEntity.ok().body("{\"exists\": true}");
+        } else {
+            return ResponseEntity.status(404).body("{\"exists\": false}");
+        }
+    }
+
 }
 
